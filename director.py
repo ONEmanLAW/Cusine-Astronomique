@@ -17,6 +17,10 @@ def setup_logging():
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
 
+    # évite les handlers dupliqués quand est dans même session
+    if logger.handlers:
+        logger.handlers.clear()
+
     fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
 
     ch = logging.StreamHandler()
@@ -29,16 +33,28 @@ def setup_logging():
     logger.addHandler(fh)
 
 
-# ----------------- GAME STATE (minimal) -----------------
+# ----------------- GAME STATE -----------------
+# Présence brute (debug / futur)
 spice_present = {1: 0, 2: 0, 3: 0, 4: 0}
+
+# Booléens utilisé
+spice_used = {1: False, 2: False, 3: False, 4: False}
+
+# Timestamp dernier "use" (utile pour debug)
 last_use_ts = {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0}
+
+
+def reset_spice_used():
+    for k in spice_used:
+        spice_used[k] = False
+        last_use_ts[k] = 0.0
+    logging.info("STATE reset: spice_used all False")
 
 
 # ----------------- MADMAPPER OUT (stub) -----------------
 mm = SimpleUDPClient(config.MADMAPPER_IP, config.MADMAPPER_PORT)
 
 def mm_base(cue_name: str):
-    # à activer quand MadMapper est prêt
     # mm.send_message("/mm/base", cue_name)
     logging.info(f"MM OUT /mm/base {cue_name}")
 
@@ -68,37 +84,41 @@ def on_spice(addr, spice_id, present):
 
 def on_spice_use(addr, spice_id):
     spice_id = int(spice_id)
-    if spice_id not in spice_present:
+
+    if spice_id not in spice_used:
         logging.warning(f"{addr} unknown spice_id={spice_id}")
         return
 
-    now = time.time()
-    last_use_ts[spice_id] = now
-    logging.info(f"{addr} /io/spice/use spice={spice_id} USE")
+    spice_used[spice_id] = True
+    last_use_ts[spice_id] = time.time()
 
-    # Exemple: feedback MadMapper (plus tard)
-    # mm_overlay("spice_used_fx")
+    logging.info(f"{addr} /io/spice/use spice={spice_id} USE -> spice_used[{spice_id}]=True")
+    logging.info(f"STATE spice_used={spice_used}")
 
 def on_spice_wrong(addr, spice_id, uid):
     spice_id = int(spice_id)
     logging.info(f"{addr} /io/spice/wrong spice={spice_id} uid={uid}")
 
-    # Exemple: trigger overlay erreur
-    # mm_wrong_spice(spice_id)
-
 def on_ready(addr, spice_id):
     spice_id = int(spice_id)
     logging.info(f"{addr} /io/spice/ready spice={spice_id} READY")
 
+def on_reset(addr, *args):
+    reset_spice_used()
+
 
 def main():
     setup_logging()
+    reset_spice_used()
 
     disp = Dispatcher()
-    disp.map("/io/spice", on_spice)              # (id, present)
-    disp.map("/io/spice/use", on_spice_use)      # (id)
-    disp.map("/io/spice/wrong", on_spice_wrong)  # (id, uid_str)
-    disp.map("/io/spice/ready", on_ready)        # (id)
+    disp.map("/io/spice", on_spice)               # (id, present)
+    disp.map("/io/spice/use", on_spice_use)       # (id)
+    disp.map("/io/spice/wrong", on_spice_wrong)   # (id, uid_str)
+    disp.map("/io/spice/ready", on_ready)         # (id)
+
+    # reset
+    disp.map("/director/reset", on_reset)         
 
     server = ThreadingOSCUDPServer(
         (config.DIRECTOR_LISTEN_IP, config.DIRECTOR_LISTEN_PORT),
