@@ -8,9 +8,9 @@ from pythonosc.osc_server import ThreadingOSCUDPServer
 from pythonosc.udp_client import SimpleUDPClient
 
 import config
+from state_spices import SpicesState
 
 
-# ----------------- LOGGING -----------------
 def setup_logging():
     os.makedirs("logs", exist_ok=True)
 
@@ -37,27 +37,11 @@ def now_hms():
     return f"{t[3]:02d}:{t[4]:02d}:{t[5]:02d}"
 
 
-# ----------------- GAME STATE -----------------
-spice_present = {1: 0, 2: 0, 3: 0, 4: 0}
-spice_used    = {1: False, 2: False, 3: False, 4: False}
-last_use_ts   = {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0}
+# ---- STATE (isolé dans un module) ----
+spices = SpicesState(spice_ids=(1, 2, 3, 4))
 
 
-def state_line():
-    # Exemple: P[1:1 2:0 3:0 4:0]  U[1:T 2:F 3:F 4:F]
-    p = " ".join([f"{i}:{spice_present[i]}" for i in (1,2,3,4)])
-    u = " ".join([f"{i}:{'T' if spice_used[i] else 'F'}" for i in (1,2,3,4)])
-    return f"P[{p}]  U[{u}]"
-
-
-def reset_spice_used():
-    for i in spice_used:
-        spice_used[i] = False
-        last_use_ts[i] = 0.0
-    logging.info(f"{now_hms()} | RESET  | {state_line()}")
-
-
-# ----------------- MADMAPPER OUT (stub) -----------------
+# ---- MadMapper (stub) ----
 mm = SimpleUDPClient(config.MADMAPPER_IP, config.MADMAPPER_PORT)
 
 def mm_base(cue_name: str):
@@ -68,63 +52,53 @@ def mm_overlay(cue_name: str):
     # mm.send_message("/mm/overlay", cue_name)
     logging.info(f"{now_hms()} | MM     | overlay={cue_name}")
 
-def mm_wrong_spice(spice_id: int):
-    # mm.send_message("/mm/trig/wrong_spice", spice_id)
-    logging.info(f"{now_hms()} | MM     | wrong_spice={spice_id}")
 
-
-# ----------------- OSC IN HANDLERS -----------------
+# ---- OSC IN handlers ----
 def on_spice(addr, spice_id, present):
     spice_id = int(spice_id)
     present = int(present)
 
-    if spice_id not in spice_present:
+    if not spices.is_known(spice_id):
         logging.info(f"{now_hms()} | WARN   | {addr} unknown_spice={spice_id}")
         return
 
-    prev = spice_present[spice_id]
-    spice_present[spice_id] = present
-
-    # log seulement si changement
-    if prev != present:
-        action = "ON " if present == 1 else "OFF"
-        logging.info(f"{now_hms()} | SPICE  | id={spice_id} present={action}  from={addr}")
-        logging.info(f"{now_hms()} | STATE  | {state_line()}")
+    changed = spices.set_present(spice_id, present)
+    if changed:
+        action = "ON" if spices.present[spice_id] == 1 else "OFF"
+        logging.info(f"{now_hms()} | SPICE  | id={spice_id} present={action} from={addr}")
+        logging.info(f"{now_hms()} | STATE  | {spices.state_line()}")
 
 def on_spice_use(addr, spice_id):
     spice_id = int(spice_id)
 
-    if spice_id not in spice_used:
+    if not spices.is_known(spice_id):
         logging.info(f"{now_hms()} | WARN   | {addr} unknown_spice={spice_id}")
         return
 
-    spice_used[spice_id] = True
-    last_use_ts[spice_id] = time.time()
-
-    logging.info(f"{now_hms()} | USE    | id={spice_id}  from={addr}")
-    logging.info(f"{now_hms()} | STATE  | {state_line()}")
+    spices.mark_use(spice_id)
+    logging.info(f"{now_hms()} | USE    | id={spice_id} from={addr}")
+    logging.info(f"{now_hms()} | STATE  | {spices.state_line()}")
 
 def on_spice_wrong(addr, spice_id, uid):
-    spice_id = int(spice_id)
-    logging.info(f"{now_hms()} | WRONG  | id={spice_id} uid={uid}  from={addr}")
+    logging.info(f"{now_hms()} | WRONG  | id={int(spice_id)} uid={uid} from={addr}")
 
 def on_ready(addr, spice_id):
-    spice_id = int(spice_id)
-    logging.info(f"{now_hms()} | READY  | id={spice_id}  from={addr}")
+    logging.info(f"{now_hms()} | READY  | id={int(spice_id)} from={addr}")
 
 def on_reset(addr, *args):
-    reset_spice_used()
+    spices.reset_used()
+    logging.info(f"{now_hms()} | RESET  | {spices.state_line()}")
 
 
 def main():
     setup_logging()
 
     disp = Dispatcher()
-    disp.map("/io/spice", on_spice)
-    disp.map("/io/spice/use", on_spice_use)
-    disp.map("/io/spice/wrong", on_spice_wrong)
-    disp.map("/io/spice/ready", on_ready)
-    disp.map("/director/reset", on_reset)
+    disp.map("/io/spice", on_spice)               # (id, present)
+    disp.map("/io/spice/use", on_spice_use)       # (id)
+    disp.map("/io/spice/wrong", on_spice_wrong)   # (id, uid)
+    disp.map("/io/spice/ready", on_ready)         # (id)
+    disp.map("/director/reset", on_reset)         # ()
 
     server = ThreadingOSCUDPServer(
         (config.DIRECTOR_LISTEN_IP, config.DIRECTOR_LISTEN_PORT),
@@ -133,7 +107,7 @@ def main():
 
     ip, port = server.server_address
     logging.info(f"{now_hms()} | START  | listening={ip}:{port}")
-    logging.info(f"{now_hms()} | STATE  | {state_line()}")
+    logging.info(f"{now_hms()} | STATE  | {spices.state_line()}")
 
     server.serve_forever()
 
