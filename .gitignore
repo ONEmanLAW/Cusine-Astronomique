@@ -1,0 +1,25 @@
+# venv
+.venv/
+venv/
+
+# python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# logs & runtime
+logs/
+*.log
+
+# env / secrets
+.env
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+
+# local config (do not commit)
+config.py
