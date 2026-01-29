@@ -3,7 +3,7 @@
 
 
 from pythonosc.udp_client import SimpleUDPClient
-from pynput import keyboard
+from pynput import keyboard # pyright: ignore[reportMissingModuleSource]
 import time
 
 # ---------- Réseau ----------

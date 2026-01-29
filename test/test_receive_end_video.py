@@ -1,4 +1,3 @@
-# test_receive_tuto_done.py
 # Reçoit le message OSC envoyé par MadMapper: /mm/tuto/done 1
 
 import logging
