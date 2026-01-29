@@ -1,3 +1,4 @@
+# director.py
 import os
 import time
 import logging
@@ -9,6 +10,7 @@ from pythonosc.udp_client import SimpleUDPClient
 
 import config
 from state_spices import SpicesState
+from state_spoon import SpoonsState
 
 
 def setup_logging():
@@ -37,58 +39,13 @@ def now_hms():
     return f"{t[3]:02d}:{t[4]:02d}:{t[5]:02d}"
 
 
-# ---- STATE épices ----
+# ---- STATE ----
 spices = SpicesState(spice_ids=(1, 2, 3, 4))
+spoons = SpoonsState(target=3)
 
 
-# ---- STATE cuillère ----
-class SpoonCounter:
-    def __init__(self, target=3):
-        self.target = int(target)
-        self.last_dir = 0
-        self.count = 0
-
-    def reset(self):
-        self.last_dir = 0
-        self.count = 0
-
-    def push(self, direction: int) -> bool:
-        d = int(direction)
-        if d not in (-1, 1):
-            return False
-
-        if d == self.last_dir:
-            self.count += 1
-        else:
-            self.last_dir = d
-            self.count = 1
-
-        if self.count >= self.target:
-            self.reset()
-            return True
-        return False
-
-
-spoons = {}  # spoon_id -> SpoonCounter
-def get_spoon(spoon_id: int) -> SpoonCounter:
-    sid = int(spoon_id)
-    if sid not in spoons:
-        spoons[sid] = SpoonCounter(target=3)
-    return spoons[sid]
-
-
-# ---- MadMapper ----
+# ---- MadMapper (stub) ----
 mm = SimpleUDPClient(config.MADMAPPER_IP, config.MADMAPPER_PORT)
-
-def mm_send(address: str, *args):
-    # python-osc accepte un scalaire ou une liste
-    try:
-        if len(args) == 1:
-            mm.send_message(address, args[0])
-        else:
-            mm.send_message(address, list(args))
-    except Exception as e:
-        logging.info(f"{now_hms()} | MMERR  | {e}")
 
 def mm_base(cue_name: str):
     logging.info(f"{now_hms()} | MM     | base={cue_name}")
@@ -97,13 +54,13 @@ def mm_overlay(cue_name: str):
     logging.info(f"{now_hms()} | MM     | overlay={cue_name}")
 
 
-# ---- DEBUG: log tout ----
+# ---- DEBUG: log tout ce qui arrive ----
 def on_any(client_addr, address, *args):
     ip, port = client_addr
     logging.info(f"{now_hms()} | RX     | from={ip}:{port} addr={address} args={args}")
 
 
-# ---- OSC IN épices ----
+# ---- OSC IN handlers épices ----
 def on_spice(client_addr, address, spice_id, present):
     spice_id = int(spice_id)
     present = 1 if int(present) else 0
@@ -165,13 +122,16 @@ def on_spoon_rot(client_addr, address, spoon_id, direction):
     label = "DROITE" if d == 1 else ("GAUCHE" if d == -1 else "UNK")
     logging.info(f"{now_hms()} | SPOON  | rot={label} id={sid} from={ip}:{port}")
 
-    done = get_spoon(sid).push(d)
+    done = spoons.get(sid).push(d)
     if done:
         done_label = "DROITE" if d == 1 else "GAUCHE"
         logging.info(f"{now_hms()} | SPOON  | DONE dir={done_label} id={sid}")
 
-        # sortie vers MadMapper (tu maps ça côté MM)
-        mm_send("/io/spoon/done", sid, d)
+        # sortie OSC vers MadMapper (spoon_id, dir)
+        try:
+            mm.send_message("/io/spoon/done", [sid, d])
+        except Exception as e:
+            logging.info(f"{now_hms()} | MMERR  | {e}")
 
 def on_spoon_alive(client_addr, address, spoon_id, uptime_s):
     ip, port = client_addr
@@ -189,13 +149,13 @@ def main():
     disp.set_default_handler(on_any, needs_reply_address=True)
 
     # épices
-    disp.map("/io/spice", on_spice, needs_reply_address=True)
-    disp.map("/io/spice/use", on_spice_use, needs_reply_address=True)
-    disp.map("/io/spice/wrong", on_spice_wrong, needs_reply_address=True)
-    disp.map("/io/spice/ready", on_ready, needs_reply_address=True)
-    disp.map("/director/reset", on_reset, needs_reply_address=True)
-    disp.map("/sys/alive", on_alive, needs_reply_address=True)
-    disp.map("/sys/boot", on_boot, needs_reply_address=True)
+    disp.map("/io/spice", on_spice, needs_reply_address=True)               # (id, present)
+    disp.map("/io/spice/use", on_spice_use, needs_reply_address=True)       # (id)
+    disp.map("/io/spice/wrong", on_spice_wrong, needs_reply_address=True)   # (id, uid)
+    disp.map("/io/spice/ready", on_ready, needs_reply_address=True)         # (id)
+    disp.map("/director/reset", on_reset, needs_reply_address=True)         # ()
+    disp.map("/sys/alive", on_alive, needs_reply_address=True)              # (id, name, uptime_s)
+    disp.map("/sys/boot", on_boot, needs_reply_address=True)                # (id, name, local_ip)
 
     # cuillère
     disp.map("/io/spoon/rot", on_spoon_rot, needs_reply_address=True)        # (spoon_id, dir)
