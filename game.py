@@ -32,7 +32,7 @@ class Game:
         self._pot_timer = None
         self._slot_timers = {}
 
-        # tremblement counter (consécutif même direction)
+        # tremblement counter
         self.tremble_target = int(config.TREMBLE_STIR_N)
         self.tremble_last_dir = 0
         self.tremble_count = 0
@@ -267,17 +267,17 @@ class Game:
                 self.enter_trans1()
             return
 
-        # combos: touillage final après épices
+       
         if self.state in (GameState.METEORITE, GameState.ALIEN) and self.spices_done:
             if d == self.stir_dir_required:
                 self.stir_count += 1
                 logging.info(f"STIR   | {self.state.name} {self.stir_count}/{self.stir_target} dir=OK")
             else:
-                # METEORITE: mauvais sens reset
+               
                 if self.state == GameState.METEORITE:
                     self.stir_count = 0
                     logging.info(f"STIR   | METEORITE wrong_dir -> reset 0/{self.stir_target}")
-                # ALIEN: mauvais sens NE RETIRE RIEN
+                
                 else:
                     logging.info(f"STIR   | ALIEN wrong_dir -> ignore (reste {self.stir_count}/{self.stir_target})")
 
