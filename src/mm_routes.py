@@ -1,6 +1,7 @@
 # mm_routes.py
 
 DASH = {
+    "IDLE":      "/mm/dash/idle",      # <-- idle de début (loop côté MadMapper)
     "TUTO":      "/mm/dash/tuto",
     "TREMBLE":   "/mm/dash/tremble",
     "TRANS1":    "/mm/dash/trans1",
@@ -17,15 +18,15 @@ POT = {
     "IDLE":      "/mm/pot/idle",
     "LEFT":      "/mm/pot/left",
     "RIGHT":     "/mm/pot/right",
-    "SPICE1":    "/mm/pot/spice/1",
-    "SPICE2":    "/mm/pot/spice/2",
-    "SPICE3":    "/mm/pot/spice/3",
-    "SPICE4":    "/mm/pot/spice/4",
+    "SPICE1":    "/mm/pot/spice1",
+    "SPICE2":    "/mm/pot/spice2",
+    "SPICE3":    "/mm/pot/spice3",
+    "SPICE4":    "/mm/pot/spice4",
 }
 
 OVR = {
     1: {"clear": "/mm/ovr/slot1/clear", "good": "/mm/ovr/slot1/good", "bad": "/mm/ovr/slot1/bad"},
     2: {"clear": "/mm/ovr/slot2/clear", "good": "/mm/ovr/slot2/good", "bad": "/mm/ovr/slot2/bad"},
-    3: {"clear": "/mm/ovr/slot3/clear", "good": "/mm/ovr/slot3/good", "bad": "/mm/ovr/slot3/bad"},
-    4: {"clear": "/mm/ovr/slot4/clear", "good": "/mm/ovr/slot4/good", "bad": "/mm/ovr/slot4/bad"},
+    3: {"clear": "/mm/ovr/slot4/clear", "good": "/mm/ovr/slot4/good", "bad": "/mm/ovr/slot4/bad"},
+    4: {"clear": "/mm/ovr/slot3/clear", "good": "/mm/ovr/slot3/good", "bad": "/mm/ovr/slot3/bad"},
 }

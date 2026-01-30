@@ -8,6 +8,7 @@ import config
 
 class GameState(Enum):
     BOOT = auto()
+    WAIT_START = auto()   # <-- idle de début, on attend $
     TUTO = auto()
     TREMBLEMENT = auto()
     TRANS1 = auto()
@@ -55,6 +56,16 @@ class Game:
             t.cancel()
         return None
 
+    def _cancel_all(self):
+        self._main_timer = self._cancel(self._main_timer)
+        self._pot_timer = self._cancel(self._pot_timer)
+        for t in self._slot_timers.values():
+            try:
+                t.cancel()
+            except Exception:
+                pass
+        self._slot_timers.clear()
+
     def after(self, seconds: float, fn):
         self._main_timer = self._cancel(self._main_timer)
         t = threading.Timer(seconds, fn)
@@ -80,17 +91,36 @@ class Game:
 
     # ---------- lifecycle ----------
     def start(self):
-        self.mm.pot("IDLE")
-        self.mm.clear_all_ovr()
-        self.enter_tuto()
+        self.enter_wait_start()
 
     def reset(self):
-        self.start()
+        self.enter_wait_start()
+
+    # ---------- start gate ($) ----------
+    def enter_wait_start(self):
+        self._cancel_all()
+        self.pot_locked_until = 0.0
+
+        self.state = GameState.WAIT_START
+        logging.info("GAME   | state=WAIT_START (press $ to start TUTO)")
+
+        self.mm.clear_all_ovr()
+        self.mm.pot("IDLE")
+        self.mm.dash("IDLE")  # <-- video idle au début (loop côté MadMapper)
+
+    def on_start(self):
+        if self.state != GameState.WAIT_START:
+            return
+        logging.info("GAME   | START pressed -> TUTO")
+        self.enter_tuto()
 
     # ---------- transitions ----------
     def enter_tuto(self):
+        self._cancel_all()
         self.state = GameState.TUTO
         logging.info("GAME   | state=TUTO")
+
+        self.mm.clear_all_ovr()
         self.mm.dash("TUTO")
         self.mm.pot("IDLE")
         self.after(config.DASH_TUTO_S, self.on_tuto_end)
@@ -101,6 +131,7 @@ class Game:
         self.enter_tremblement()
 
     def enter_tremblement(self):
+        self._cancel_all()
         self.state = GameState.TREMBLEMENT
         self.tremble_last_dir = 0
         self.tremble_count = 0
@@ -109,6 +140,7 @@ class Game:
         self.mm.pot("IDLE")
 
     def enter_trans1(self):
+        self._cancel_all()
         self.state = GameState.TRANS1
         logging.info("GAME   | state=TRANS1")
         self.mm.dash("TRANS1")
@@ -121,6 +153,7 @@ class Game:
         self.enter_meteorite()
 
     def enter_meteorite(self):
+        self._cancel_all()
         self.state = GameState.METEORITE
         self.order = list(config.METEORITE_ORDER)
         self.order_idx = 0
@@ -136,6 +169,7 @@ class Game:
         logging.info(f"GAME   | state=METEORITE order={self.order} stir={self.stir_target} dir={self.stir_dir_required}")
 
     def enter_laser1(self):
+        self._cancel_all()
         self.state = GameState.LASER1
         logging.info("GAME   | state=LASER1")
         self.mm.dash("LASER1")
@@ -148,6 +182,7 @@ class Game:
         self.enter_trans2()
 
     def enter_trans2(self):
+        self._cancel_all()
         self.state = GameState.TRANS2
         logging.info("GAME   | state=TRANS2")
         self.mm.dash("TRANS2")
@@ -160,6 +195,7 @@ class Game:
         self.enter_alien()
 
     def enter_alien(self):
+        self._cancel_all()
         self.state = GameState.ALIEN
         self.order = list(config.ALIEN_ORDER)
         self.order_idx = 0
@@ -175,6 +211,7 @@ class Game:
         logging.info(f"GAME   | state=ALIEN order={self.order} stir={self.stir_target} dir={self.stir_dir_required}")
 
     def enter_laser2(self):
+        self._cancel_all()
         self.state = GameState.LASER2
         logging.info("GAME   | state=LASER2")
         self.mm.dash("LASER2")
@@ -187,6 +224,7 @@ class Game:
         self.enter_trans3()
 
     def enter_trans3(self):
+        self._cancel_all()
         self.state = GameState.TRANS3
         logging.info("GAME   | state=TRANS3")
         self.mm.dash("TRANS3")
@@ -199,6 +237,7 @@ class Game:
         self.enter_end()
 
     def enter_end(self):
+        self._cancel_all()
         self.state = GameState.END
         logging.info("GAME   | state=END")
         self.mm.dash("END")
@@ -233,7 +272,6 @@ class Game:
             nxt = self.order[self.order_idx] if self.order_idx < len(self.order) else "DONE"
             logging.info(f"COMBO  | ok spice={sid} next={nxt} spices_done={self.spices_done}")
         else:
-            # si réutilisé après validation -> ça doit rouge: donc jamais d'ignore
             self.mm.ovr(sid, "bad")
             self.slot_after(sid, config.OVR_SPICE_SHOW_S, lambda s=sid: self.mm.ovr(s, "clear"))
             logging.info(f"COMBO  | bad spice={sid} expected={expected}")
@@ -267,17 +305,14 @@ class Game:
                 self.enter_trans1()
             return
 
-       
         if self.state in (GameState.METEORITE, GameState.ALIEN) and self.spices_done:
             if d == self.stir_dir_required:
                 self.stir_count += 1
                 logging.info(f"STIR   | {self.state.name} {self.stir_count}/{self.stir_target} dir=OK")
             else:
-               
                 if self.state == GameState.METEORITE:
                     self.stir_count = 0
                     logging.info(f"STIR   | METEORITE wrong_dir -> reset 0/{self.stir_target}")
-                
                 else:
                     logging.info(f"STIR   | ALIEN wrong_dir -> ignore (reste {self.stir_count}/{self.stir_target})")
 

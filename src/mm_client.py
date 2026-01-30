@@ -15,14 +15,27 @@ class MM:
             logging.info(f"MMERR  | {e}")
 
     def dash(self, key: str):
-        self.send(DASH[key], 1, tag=f"DASH:{key}")
+        addr = DASH.get(key)
+        if not addr:
+            logging.info(f"MMWARN | DASH missing key={key}")
+            return
+        self.send(addr, 1, tag=f"DASH:{key}")
 
     def pot(self, key: str):
-        self.send(POT[key], 1, tag=f"POT:{key}")
+        addr = POT.get(key)
+        if not addr:
+            logging.info(f"MMWARN | POT missing key={key}")
+            return
+        self.send(addr, 1, tag=f"POT:{key}")
 
     def ovr(self, spice_id: int, kind: str):
-        addr = OVR[int(spice_id)][kind]
-        self.send(addr, 1, tag=f"OVR:spice={spice_id} kind={kind}")
+        sid = int(spice_id)
+        k = str(kind)
+        addr = OVR.get(sid, {}).get(k)
+        if not addr:
+            logging.info(f"MMWARN | OVR missing spice={sid} kind={k}")
+            return
+        self.send(addr, 1, tag=f"OVR:spice={sid} kind={k}")
 
     def clear_all_ovr(self):
         for sid in (1, 2, 3, 4):

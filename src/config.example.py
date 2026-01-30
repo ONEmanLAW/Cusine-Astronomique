@@ -11,31 +11,33 @@ DEV_KEYBOARD = True
 DEV_SPOON_ID = 1
 
 # Durées vidéos (secondes)
-DASH_TUTO_S   = 25.0
-DASH_TRANS1_S = 15.0
-DASH_LASER1_S = 5.0
-DASH_TRANS2_S = 15.0
-DASH_LASER2_S = 5.0
+DASH_TUTO_S   = 48
+DASH_TRANS1_S = 5
+DASH_LASER1_S = 6.6
+DASH_TRANS2_S = 4.4
+DASH_LASER2_S = 6.80
+
+
 DASH_TRANS3_S = 15.0
 
 # Marmite left/right = one-shot puis retour idle
-POT_TURN_S = 5
+POT_TURN_S = 2
 
 # Marmite couleur épice
 POT_SPICE_HOLD_S = 10
 
 # Overlay épices (vert/rouge)
-OVR_SPICE_SHOW_S = 5.0
+OVR_SPICE_SHOW_S = 6.0
 
 # Tremblement: nombre de tours consécutifs même sens
-TREMBLE_STIR_N = 5
+TREMBLE_STIR_N = 3
 
 # Meteorite: ordre + touillage final
-METEORITE_ORDER = (1, 2, 3, 4)
+METEORITE_ORDER = (4, 1, 2, 3)
 METEORITE_STIR_DIR = 1    # +1 droite
-METEORITE_STIR_N   = 5
+METEORITE_STIR_N   = 3
 
 # Alien: ordre + touillage final
 ALIEN_ORDER = (4, 3, 2, 1)
 ALIEN_STIR_DIR = -1       # -1 gauche
-ALIEN_STIR_N   = 5
+ALIEN_STIR_N   = 3

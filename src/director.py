@@ -86,6 +86,12 @@ def on_spoon_rot(client_addr, address, spoon_id, direction):
     game.on_spoon_rot(d)
 
 
+def on_start(client_addr, address, *args):
+    ip, port = client_addr
+    logging.info(f"START  | from={ip}:{port} -> game.on_start()")
+    game.on_start()
+
+
 def on_reset(client_addr, address, *args):
     spices_state.reset_used()
     logging.info(f"RESET  | {spices_state.state_line()}")
@@ -94,7 +100,7 @@ def on_reset(client_addr, address, *args):
 
 def start_keyboard_sim():
     def loop():
-        logging.info("KBD    | ON (a=gauche d=droite 1-4=spice_use r=reset)")
+        logging.info("KBD    | ON ($=start a=gauche d=droite 1-4=spice_use r=reset)")
         fd = sys.stdin.fileno()
         old = termios.tcgetattr(fd)
         tty.setcbreak(fd)
@@ -108,7 +114,9 @@ def start_keyboard_sim():
                     continue
                 c = ch.lower()
 
-                if c == "a":
+                if c == "$":
+                    game.on_start()
+                elif c == "a":
                     game.on_spoon_rot(-1)
                 elif c == "d":
                     game.on_spoon_rot(1)
@@ -132,6 +140,8 @@ def main():
     disp.map("/io/spice", on_spice_present, needs_reply_address=True)        # (id, present)
     disp.map("/io/spice/use", on_spice_use, needs_reply_address=True)        # (id)
     disp.map("/io/spoon/rot", on_spoon_rot, needs_reply_address=True)        # (spoon_id, dir)
+
+    disp.map("/director/start", on_start, needs_reply_address=True)          # ()
     disp.map("/director/reset", on_reset, needs_reply_address=True)          # ()
 
     server = ThreadingOSCUDPServer(
