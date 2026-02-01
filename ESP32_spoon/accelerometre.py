@@ -1,8 +1,10 @@
+# C'était plus facile de faire en français. Désolé pour ce fichier.
+
 import utime # pyright: ignore[reportMissingImports]
 import struct
 import math
 from machine import Pin, I2C # pyright: ignore[reportMissingImports]
-import config
+import configAcc
 
 # MPU6050 regs
 REG_PWR_MGMT_1 = 0x6B
@@ -24,8 +26,8 @@ def signe(x, dead=0.0):
     return 0
 
 def recuperer_bus_i2c():
-    scl = Pin(config.I2C_SCL_PIN, Pin.OPEN_DRAIN, value=1)
-    sda = Pin(config.I2C_SDA_PIN, Pin.OPEN_DRAIN, value=1)
+    scl = Pin(configAcc.I2C_SCL_PIN, Pin.OPEN_DRAIN, value=1)
+    sda = Pin(configAcc.I2C_SDA_PIN, Pin.OPEN_DRAIN, value=1)
     utime.sleep_us(50)
     for _ in range(9):
         scl.value(0); utime.sleep_us(10)
@@ -35,9 +37,9 @@ def recuperer_bus_i2c():
     sda.value(1); utime.sleep_us(10)
 
 def creer_i2c():
-    scl = Pin(config.I2C_SCL_PIN, Pin.PULL_UP)
-    sda = Pin(config.I2C_SDA_PIN, Pin.PULL_UP)
-    return I2C(0, scl=scl, sda=sda, freq=config.I2C_FREQ_HZ)
+    scl = Pin(configAcc.I2C_SCL_PIN, Pin.PULL_UP)
+    sda = Pin(configAcc.I2C_SDA_PIN, Pin.PULL_UP)
+    return I2C(0, scl=scl, sda=sda, freq=configAcc.I2C_FREQ_HZ)
 
 def lire_who_am_i(i2c, addr):
     try:
@@ -89,13 +91,13 @@ class DetecteurTouillage:
         recuperer_bus_i2c()
         self.i2c = creer_i2c()
 
-        if config.PRINT_I2C_SCAN:
+        if configAcc.PRINT_I2C_SCAN:
             try:
                 print("I2C scan:", self.i2c.scan())
             except:
                 print("I2C scan: []")
 
-        for a in config.MPU_CANDIDATES:
+        for a in configAcc.MPU_CANDIDATES:
             who = lire_who_am_i(self.i2c, a)
             if who == 0x68:
                 self.addr = a
@@ -152,7 +154,7 @@ class DetecteurTouillage:
         acc_z = azr / ACC_LSB_PER_G
 
         # gravité low-pass
-        a = config.GRAVITY_ALPHA
+        a = configAcc.GRAVITY_ALPHA
         self.grav_x = (1.0 - a) * self.grav_x + a * acc_x
         self.grav_y = (1.0 - a) * self.grav_y + a * acc_y
         self.grav_z = (1.0 - a) * self.grav_z + a * acc_z
@@ -174,7 +176,7 @@ class DetecteurTouillage:
         lat_z = lin_z - dot*ghat_z
 
         # filtre latéral
-        la = config.LATERAL_ALPHA
+        la = configAcc.LATERAL_ALPHA
         self.lat_fx = (1.0 - la) * self.lat_fx + la * lat_x
         self.lat_fy = (1.0 - la) * self.lat_fy + la * lat_y
         self.lat_fz = (1.0 - la) * self.lat_fz + la * lat_z
@@ -182,8 +184,8 @@ class DetecteurTouillage:
         lateral_g = norme(self.lat_fx, self.lat_fy, self.lat_fz)
         now_ms = utime.ticks_ms()
 
-        gate_on  = lateral_g >= config.LATERAL_START_G
-        gate_off = lateral_g <= config.LATERAL_STOP_G
+        gate_on  = lateral_g >= configAcc.LATERAL_START_G
+        gate_off = lateral_g <= configAcc.LATERAL_STOP_G
 
         if not self.geste_actif:
             if gate_on:
@@ -196,18 +198,18 @@ class DetecteurTouillage:
             if gate_on:
                 self.dernier_ok_ms = now_ms
             else:
-                if gate_off and utime.ticks_diff(now_ms, self.dernier_ok_ms) > config.MAX_PAUSE_MS:
+                if gate_off and utime.ticks_diff(now_ms, self.dernier_ok_ms) > configAcc.MAX_PAUSE_MS:
                     self.reset_geste()
 
         # énergie (amplitude)
-        if self.geste_actif and lateral_g >= config.LATERAL_MIN_FOR_ANGLE_G:
+        if self.geste_actif and lateral_g >= configAcc.LATERAL_MIN_FOR_ANGLE_G:
             self.energie_laterale += lateral_g
 
         # cumul angle + sens
-        if self.geste_actif and lateral_g >= config.LATERAL_MIN_FOR_ANGLE_G:
+        if self.geste_actif and lateral_g >= configAcc.LATERAL_MIN_FOR_ANGLE_G:
             if self.has_prev:
                 prev_norm = norme(self.prev_lat_x, self.prev_lat_y, self.prev_lat_z)
-                if prev_norm >= config.LATERAL_MIN_FOR_ANGLE_G:
+                if prev_norm >= configAcc.LATERAL_MIN_FOR_ANGLE_G:
                     cx = self.prev_lat_y*self.lat_fz - self.prev_lat_z*self.lat_fy
                     cy = self.prev_lat_z*self.lat_fx - self.prev_lat_x*self.lat_fz
                     cz = self.prev_lat_x*self.lat_fy - self.prev_lat_y*self.lat_fx
@@ -218,7 +220,7 @@ class DetecteurTouillage:
                     dtheta_deg = math.atan2(cross_mag, dotp + EPS) * 57.2957795
                     spin = cx*ghat_x + cy*ghat_y + cz*ghat_z
 
-                    step_dir = signe(spin, 1e-8) * config.DROITE_GAUCHE_SIGN
+                    step_dir = signe(spin, 1e-8) * configAcc.DROITE_GAUCHE_SIGN
                     if step_dir != 0:
                         self.angle_deg += step_dir * dtheta_deg
                         self.direction_live = step_dir
@@ -231,8 +233,8 @@ class DetecteurTouillage:
             self.direction_live = 0
 
         # validation: angle + amplitude
-        if self.geste_actif and abs(self.angle_deg) >= config.TOUR_SEUIL_DEG:
-            if self.energie_laterale >= config.ENERGIE_LATERALE_MIN:
+        if self.geste_actif and abs(self.angle_deg) >= configAcc.TOUR_SEUIL_DEG:
+            if self.energie_laterale >= configAcc.ENERGIE_LATERALE_MIN:
                 self.nb_tours += 1
                 event = 1
                 event_dir = 1 if self.angle_deg > 0 else -1
