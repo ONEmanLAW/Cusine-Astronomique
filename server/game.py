@@ -8,7 +8,7 @@ import config
 
 class GameState(Enum):
     BOOT = auto()
-    WAIT_START = auto()   # <-- idle de début, on attend $
+    WAIT_START = auto() 
     TUTO = auto()
     TREMBLEMENT = auto()
     TRANS1 = auto()
@@ -106,7 +106,7 @@ class Game:
 
         self.mm.clear_all_ovr()
         self.mm.pot("IDLE")
-        self.mm.dash("IDLE")  # <-- video idle au début (loop côté MadMapper)
+        self.mm.dash("IDLE") 
 
     def on_start(self):
         if self.state != GameState.WAIT_START:

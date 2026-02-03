@@ -1,7 +1,7 @@
 # mm_routes.py
 
 DASH = {
-    "IDLE":      "/mm/dash/idle",      # <-- idle de début (loop côté MadMapper)
+    "IDLE":      "/mm/dash/idle", 
     "TUTO":      "/mm/dash/tuto",
     "TREMBLE":   "/mm/dash/tremble",
     "TRANS1":    "/mm/dash/trans1",

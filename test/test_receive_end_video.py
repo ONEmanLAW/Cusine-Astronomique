@@ -4,8 +4,8 @@ import logging
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import ThreadingOSCUDPServer
 
-LISTEN_IP = "0.0.0.0"
-LISTEN_PORT = 1234
+LISTEN_IP = "0.0.0.0" # Mettre bonne ip
+LISTEN_PORT = 8000 # Mettre bon port
 ADDR_DONE = "/mm/tuto/done"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(message)s")
