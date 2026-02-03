@@ -104,17 +104,21 @@ python3 director.py
 
 ## Galerie
 
-<div align="center">
+<!-- <div align="center">
   <h2>Démo vidéo</h2>
-  <a href="./ReadMe-Images/montage-mapping.MOV">
+
+  <a href="./ReadMe-Images/montage-mapping.mp4?raw=1">
     <b style="font-size:22px;">▶ REGARDER LA VIDÉO</b>
   </a>
+
   <br/><br/>
-  <a href="./ReadMe-Images/montage-mapping.MOV">
-    <img src="./ReadMe-Images/setup.png" alt="Voir la vidéo de démo" width="520" />
+
+  <a href="./ReadMe-Images/montage-mapping.mp4?raw=1">
+    <img src="./ReadMe-Images/setup.png" alt="Voir la vidéo de démo" width="420" />
   </a>
+
   <br/><br/>
-</div>
+</div> -->
 
 <div align="center">
   <table>
