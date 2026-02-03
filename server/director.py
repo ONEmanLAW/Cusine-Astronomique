@@ -44,7 +44,6 @@ def now_hms():
     return f"{t[3]:02d}:{t[4]:02d}:{t[5]:02d}"
 
 
-# juste pour logs présence épices (si tu l'utilises encore)
 spices_state = SpicesState(spice_ids=(1, 2, 3, 4))
 
 mm = MM(config.MADMAPPER_IP, config.MADMAPPER_PORT)
